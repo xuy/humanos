@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format, isWithinInterval, parse } from 'date-fns';
 import { Routine, RoutineStatus, RoutinesData, RoutineWithStatus } from '../types';
+import DEFAULT_ROUTINES from '../data/defaultRoutines';
 
 const STORAGE_KEYS = {
   ROUTINES: 'humanos_routines',
@@ -10,7 +11,7 @@ const STORAGE_KEYS = {
 };
 
 // Default JSON URL - should be configurable in settings
-const DEFAULT_JSON_URL = 'https://raw.githubusercontent.com/username/humanos/main/routines.json';
+const DEFAULT_JSON_URL = 'https://raw.githubusercontent.com/xuy/humanos/refs/heads/master/routines.json';
 
 // Fetch routines from remote URL
 export const fetchRoutines = async (forceRefresh = false): Promise<Routine[]> => {
@@ -22,7 +23,11 @@ export const fetchRoutines = async (forceRefresh = false): Promise<Routine[]> =>
     if (!forceRefresh && lastFetchDate === currentDate) {
       const cachedRoutines = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
       if (cachedRoutines) {
-        return JSON.parse(cachedRoutines);
+        try {
+          return JSON.parse(cachedRoutines);
+        } catch (e) {
+          console.warn('Error parsing cached routines:', e);
+        }
       }
     }
     
@@ -33,25 +38,41 @@ export const fetchRoutines = async (forceRefresh = false): Promise<Routine[]> =>
       await AsyncStorage.setItem(STORAGE_KEYS.JSON_URL, DEFAULT_JSON_URL);
     }
     
-    // Fetch the data
-    const response = await fetch(jsonUrl);
-    const data: RoutinesData = await response.json();
-    
-    // Cache the routines
-    await AsyncStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(data.routines));
-    await AsyncStorage.setItem(STORAGE_KEYS.LAST_FETCH_DATE, currentDate);
-    
-    return data.routines;
+    try {
+      // Try to fetch the data
+      const response = await fetch(jsonUrl);
+      const data: RoutinesData = await response.json();
+      
+      // Cache the routines
+      if (data.routines) {
+        await AsyncStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(data.routines));
+        await AsyncStorage.setItem(STORAGE_KEYS.LAST_FETCH_DATE, currentDate);
+        return data.routines;
+      }
+      throw new Error('No routines found in response');
+    } catch (fetchError) {
+      console.warn('Failed to fetch remote routines, using local data:', fetchError);
+      // Use local default routines
+      const defaultRoutines = DEFAULT_ROUTINES.routines;
+      await AsyncStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(defaultRoutines));
+      await AsyncStorage.setItem(STORAGE_KEYS.LAST_FETCH_DATE, currentDate);
+      return defaultRoutines;
+    }
   } catch (error) {
-    console.error('Error fetching routines:', error);
+    console.error('Error in fetchRoutines:', error);
     
     // Fallback to cached data if available
-    const cachedRoutines = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
-    if (cachedRoutines) {
-      return JSON.parse(cachedRoutines);
+    try {
+      const cachedRoutines = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
+      if (cachedRoutines) {
+        return JSON.parse(cachedRoutines);
+      }
+    } catch (e) {
+      console.warn('Error using cached routines:', e);
     }
     
-    return [];
+    // If no cached data, use default routines
+    return DEFAULT_ROUTINES.routines;
   }
 };
 

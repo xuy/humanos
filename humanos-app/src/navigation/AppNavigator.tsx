@@ -30,15 +30,17 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => (
   <View style={{ 
     backgroundColor: focused ? '#007AFF' : '#F0F0F0',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    marginBottom: 4
   }}>
     <Text style={{ 
       color: focused ? '#FFF' : '#666',
-      fontWeight: focused ? 'bold' : 'normal'
+      fontWeight: focused ? 'bold' : 'normal',
+      fontSize: 14
     }}>
       {name.charAt(0)}
     </Text>
@@ -56,7 +58,15 @@ const MainTabs = () => {
           borderTopColor: '#F0F0F0',
           height: 60,
           paddingBottom: 8,
+          paddingTop: 8,
         },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          marginTop: -4,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
+        }
       }}
     >
       <Tab.Screen 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -10,96 +10,93 @@ import {
   Alert
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getJsonUrl, setJsonUrl, fetchRoutines } from '../utils/routines';
+import useRoutines from '../hooks/useRoutines';
+
+const STORAGE_KEYS = {
+  ROUTINES: 'humanos_routines',
+  JSON_URL: 'humanos_json_url',
+  ROUTINE_STATUS: 'humanos_routine_status',
+  LAST_FETCH_DATE: 'humanos_last_fetch_date',
+  LAST_RESET_DATE: 'humanos_last_reset_date',
+};
 
 const Settings: React.FC = () => {
-  const [jsonUrl, setJsonUrlState] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [developerMode, setDeveloperMode] = useState<boolean>(false);
-  const [rawJson, setRawJson] = useState<string>('');
+  const [jsonUrl, setJsonUrlState] = useState('');
+  const [developerMode, setDeveloperMode] = useState(false);
+  const [rawJson, setRawJson] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { refreshRoutines } = useRoutines();
   
-  // Load settings on component mount
-  useEffect(() => {
+  // Load initial values
+  React.useEffect(() => {
     const loadSettings = async () => {
-      try {
-        // Get JSON URL
-        const url = await getJsonUrl();
-        setJsonUrlState(url);
-        
-        // Get developer mode setting
-        const devMode = await AsyncStorage.getItem('humanos_developer_mode');
-        setDeveloperMode(devMode === 'true');
-        
-        // If developer mode is enabled, load raw JSON
-        if (devMode === 'true') {
-          const routinesJson = await AsyncStorage.getItem('humanos_routines');
-          if (routinesJson) {
-            setRawJson(JSON.stringify(JSON.parse(routinesJson), null, 2));
-          }
-        }
-      } catch (error) {
-        console.error('Error loading settings:', error);
-      }
+      const url = await AsyncStorage.getItem(STORAGE_KEYS.JSON_URL);
+      if (url) setJsonUrlState(url);
+      
+      const devMode = await AsyncStorage.getItem('developer_mode');
+      setDeveloperMode(devMode === 'true');
     };
-    
     loadSettings();
   }, []);
   
-  // Save JSON URL
   const handleSaveUrl = async () => {
     try {
-      if (!jsonUrl.trim()) {
-        Alert.alert('Error', 'Please enter a valid URL');
-        return;
-      }
-      
-      await setJsonUrl(jsonUrl);
-      Alert.alert('Success', 'JSON URL has been saved');
+      await AsyncStorage.setItem(STORAGE_KEYS.JSON_URL, jsonUrl);
+      Alert.alert('Success', 'JSON URL updated successfully');
     } catch (error) {
-      console.error('Error saving URL:', error);
-      Alert.alert('Error', 'Failed to save URL');
+      Alert.alert('Error', 'Failed to save JSON URL');
     }
   };
   
-  // Refresh routines from URL
+  const handleToggleDeveloperMode = async (value: boolean) => {
+    setDeveloperMode(value);
+    await AsyncStorage.setItem('developer_mode', value.toString());
+  };
+  
   const handleRefreshRoutines = async () => {
     setIsLoading(true);
-    
     try {
-      await fetchRoutines(true);
-      
-      // If developer mode is enabled, update raw JSON
-      if (developerMode) {
-        const routinesJson = await AsyncStorage.getItem('humanos_routines');
-        if (routinesJson) {
-          setRawJson(JSON.stringify(JSON.parse(routinesJson), null, 2));
-        }
-      }
-      
-      Alert.alert('Success', 'Routines have been refreshed');
+      await refreshRoutines();
+      Alert.alert('Success', 'Routines refreshed successfully');
     } catch (error) {
-      console.error('Error refreshing routines:', error);
       Alert.alert('Error', 'Failed to refresh routines');
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Toggle developer mode
-  const handleToggleDeveloperMode = async (value: boolean) => {
+  const clearCache = async () => {
     try {
-      setDeveloperMode(value);
-      await AsyncStorage.setItem('humanos_developer_mode', value ? 'true' : 'false');
-      
-      // If enabling developer mode, load raw JSON
-      if (value) {
-        const routinesJson = await AsyncStorage.getItem('humanos_routines');
-        if (routinesJson) {
-          setRawJson(JSON.stringify(JSON.parse(routinesJson), null, 2));
-        }
+      await AsyncStorage.removeItem(STORAGE_KEYS.ROUTINES);
+      await AsyncStorage.removeItem(STORAGE_KEYS.LAST_FETCH_DATE);
+      Alert.alert('Success', 'Cache cleared successfully');
+      handleRefreshRoutines();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to clear cache');
+    }
+  };
+  
+  const clearTodayStatus = async () => {
+    try {
+      const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
+      if (statusesJson) {
+        const statuses = JSON.parse(statusesJson);
+        const currentDate = new Date().toISOString().split('T')[0];
+        
+        // Only clear today's statuses
+        const updatedStatuses = Object.fromEntries(
+          Object.entries(statuses).filter(([_, value]) => {
+            const lastUpdated = (value as any).lastUpdated;
+            return lastUpdated && !lastUpdated.startsWith(currentDate);
+          })
+        );
+        
+        await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(updatedStatuses));
+        Alert.alert('Success', "Today's statuses cleared successfully");
+        handleRefreshRoutines();
       }
     } catch (error) {
-      console.error('Error toggling developer mode:', error);
+      Alert.alert('Error', 'Failed to clear today\'s statuses');
     }
   };
 
@@ -135,6 +132,20 @@ const Settings: React.FC = () => {
           <Text style={styles.buttonText}>
             {isLoading ? 'Refreshing...' : 'Refresh Routines'}
           </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.button}
+          onPress={clearCache}
+        >
+          <Text style={styles.buttonText}>Clear Cache</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.button}
+          onPress={clearTodayStatus}
+        >
+          <Text style={styles.buttonText}>Clear Today's Status</Text>
         </TouchableOpacity>
       </View>
       
@@ -173,34 +184,36 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   section: {
-    marginBottom: 24,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: 16,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   input: {
-    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     borderRadius: 8,
     padding: 12,
+    marginBottom: 12,
     fontSize: 16,
-    marginBottom: 16,
   },
   button: {
     backgroundColor: '#007AFF',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
+    marginBottom: 8,
   },
   disabledButton: {
-    backgroundColor: '#CCCCCC',
+    opacity: 0.5,
   },
   buttonText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
   },
@@ -208,17 +221,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
   },
   settingLabel: {
     fontSize: 16,
-    color: '#333',
   },
   jsonContainer: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#F0F0F0',
     borderRadius: 8,
     padding: 12,
-    maxHeight: 300,
   },
   jsonText: {
     fontFamily: 'monospace',
