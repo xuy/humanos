@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "start": "./start.sh",
+    "start-local": "expo start",
+    "android": "./start.sh --android",
+    "ios": "./start.sh --ios",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -19,7 +20,10 @@
     "react": "18.3.1",
     "react-native": "0.76.9",
     "react-native-safe-area-context": "^5.4.0",
-    "react-native-screens": "^4.10.0"
+    "react-native-screens": "^4.10.0",
+    "react-dom": "18.3.1",
+    "react-native-web": "~0.19.13",
+    "@expo/metro-runtime": "~4.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

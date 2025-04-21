@@ -5,7 +5,9 @@ import {
   TouchableOpacity, 
   View, 
   SafeAreaView,
-  Dimensions
+  Dimensions,
+  Alert,
+  Platform
 } from 'react-native';
 import { RoutineWithStatus, Step } from '../types';
 import useRoutines from '../hooks/useRoutines';
@@ -19,38 +21,81 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
   const { routine } = route.params;
   const { updateRoutineStatus } = useRoutines();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   
   const currentStep = routine.steps[currentStepIndex];
   const totalSteps = routine.steps.length;
   const isLastStep = currentStepIndex === totalSteps - 1;
+  const isFirstStep = currentStepIndex === 0;
   
-  const handleNextStep = () => {
-    if (isLastStep) {
-      // Mark routine as completed
-      updateRoutineStatus(routine.id, 'completed');
-      // Navigate back to dashboard
-      navigation.goBack();
+  const navigateBack = () => {
+    if (Platform.OS === 'web') {
+      navigation.navigate('MainTabs', {
+        screen: 'Daily'
+      });
     } else {
-      // Move to next step
+      navigation.goBack();
+    }
+  };
+
+  const handleNextStep = () => {
+    // Mark current step as completed
+    if (!completedSteps.includes(currentStepIndex)) {
+      setCompletedSteps([...completedSteps, currentStepIndex]);
+    }
+
+    if (isLastStep) {
+      // Only mark as completed if all steps are done (not skipped)
+      if (completedSteps.length === totalSteps - 1) {
+        updateRoutineStatus(routine.id, 'completed');
+      } else {
+        updateRoutineStatus(routine.id, 'in_progress');
+      }
+      navigateBack();
+    } else {
+      setCurrentStepIndex(prev => prev + 1);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (!isFirstStep) {
+      setCurrentStepIndex(prev => prev - 1);
+    }
+  };
+
+  const handleSkipStep = () => {
+    if (isLastStep) {
+      // If skipping last step, mark as in_progress
+      updateRoutineStatus(routine.id, 'in_progress');
+      navigateBack();
+    } else {
       setCurrentStepIndex(prev => prev + 1);
     }
   };
   
   const handleExit = () => {
-    // If not completed, keep in progress
-    if (currentStepIndex > 0 && !isLastStep) {
+    // If we have completed steps, keep them in progress
+    if (completedSteps.length > 0) {
       updateRoutineStatus(routine.id, 'in_progress');
     }
-    navigation.goBack();
+    navigateBack();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.routineName}>{routine.name}</Text>
-        <Text style={styles.progress}>
-          Step {currentStepIndex + 1} of {totalSteps}
-        </Text>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={handleExit}
+        >
+          <Text style={styles.backButtonText}>← Back</Text>
+        </TouchableOpacity>
+        <View style={styles.headerContent}>
+          <Text style={styles.routineName}>{routine.name}</Text>
+          <Text style={styles.progress}>
+            Step {currentStepIndex + 1} of {totalSteps}
+          </Text>
+        </View>
       </View>
       
       <TouchableOpacity 
@@ -82,12 +127,22 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
       </TouchableOpacity>
       
       <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.exitButton}
-          onPress={handleExit}
-        >
-          <Text style={styles.exitButtonText}>Exit</Text>
-        </TouchableOpacity>
+        <View style={styles.navigationButtons}>
+          <TouchableOpacity 
+            style={[styles.navButton, isFirstStep && styles.disabledButton]}
+            onPress={handlePreviousStep}
+            disabled={isFirstStep}
+          >
+            <Text style={[styles.navButtonText, isFirstStep && styles.disabledButtonText]}>Back</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.navButton}
+            onPress={handleSkipStep}
+          >
+            <Text style={styles.navButtonText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -104,6 +159,18 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#2196F3',
+  },
+  headerContent: {
+    flex: 1,
   },
   routineName: {
     fontSize: 22,
@@ -159,15 +226,29 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
-    alignItems: 'center',
   },
-  exitButton: {
-    paddingVertical: 8,
+  navigationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
     paddingHorizontal: 16,
   },
-  exitButtonText: {
+  navButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  navButtonText: {
     fontSize: 16,
-    color: '#666',
+    color: '#2196F3',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  disabledButtonText: {
+    color: '#999',
   },
 });
 
