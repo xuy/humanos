@@ -35,6 +35,14 @@ const Settings: React.FC = () => {
       
       const devMode = await AsyncStorage.getItem('developer_mode');
       setDeveloperMode(devMode === 'true');
+
+      // Load JSON data if in developer mode
+      if (devMode === 'true') {
+        const routinesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
+        if (routinesJson) {
+          setRawJson(JSON.stringify(JSON.parse(routinesJson), null, 2));
+        }
+      }
     };
     loadSettings();
   }, []);
@@ -51,6 +59,14 @@ const Settings: React.FC = () => {
   const handleToggleDeveloperMode = async (value: boolean) => {
     setDeveloperMode(value);
     await AsyncStorage.setItem('developer_mode', value.toString());
+    
+    // Load JSON data when enabling developer mode
+    if (value) {
+      const routinesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
+      if (routinesJson) {
+        setRawJson(JSON.stringify(JSON.parse(routinesJson), null, 2));
+      }
+    }
   };
   
   const handleRefreshRoutines = async () => {
@@ -83,20 +99,23 @@ const Settings: React.FC = () => {
         const statuses = JSON.parse(statusesJson);
         const currentDate = new Date().toISOString().split('T')[0];
         
-        // Only clear today's statuses
+        // Reset all statuses to not_started
         const updatedStatuses = Object.fromEntries(
-          Object.entries(statuses).filter(([_, value]) => {
+          Object.entries(statuses).map(([key, value]) => {
             const lastUpdated = (value as any).lastUpdated;
-            return lastUpdated && !lastUpdated.startsWith(currentDate);
+            if (lastUpdated && lastUpdated.startsWith(currentDate)) {
+              return [key, { status: 'not_started', lastUpdated: new Date().toISOString() }];
+            }
+            return [key, value];
           })
         );
         
         await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(updatedStatuses));
-        Alert.alert('Success', "Today's statuses cleared successfully");
+        Alert.alert('Success', "Today's statuses reset to not started");
         handleRefreshRoutines();
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to clear today\'s statuses');
+      Alert.alert('Error', 'Failed to reset today\'s statuses');
     }
   };
 
