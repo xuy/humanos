@@ -1,6 +1,6 @@
 # Human OS
 
-A minimalist habit memory app that guides the user through multi-step routines (like skincare, hydration, wake-up rituals), until they become second nature.
+A minimalist habit memory app that guides users through multi-step routines (like skincare, hydration, wake-up rituals).
 
 ## Features
 
@@ -13,52 +13,75 @@ A minimalist habit memory app that guides the user through multi-step routines (
 
 ## Tech Stack
 
-- React Native (with Expo)
+- React Native (Expo)
 - TypeScript
 - AsyncStorage for local data
-- React Navigation for navigation
-- date-fns for date/time operations
+- React Navigation
+- date-fns
 
-## Getting Started
+## Development Setup
 
 ### Prerequisites
 
-- Node.js (v14 or newer)
+- Node.js (v14+)
 - npm or yarn
 - Expo CLI
-- Android Studio (for Android development) or Xcode (for iOS development)
+- Android Studio (for Android) or Xcode (for iOS)
 
-### Installation
+### Windows/WSL Setup
 
-1. Clone the repository:
+1. Install WSL and Ubuntu:
+   ```powershell
+   wsl --install -d Ubuntu
    ```
-   git clone https://github.com/yourusername/humanos.git
+
+2. Clone and setup:
+   ```bash
+   git clone https://github.com/xuy/humanos.git
    cd humanos
-   ```
-
-2. Install dependencies:
-   ```
    cd humanos-app
    npm install
    ```
 
-3. Start the development server:
+3. Configure Metro access:
+   ```bash
+   # From WSL
+   ./run-setup.sh
    ```
+   This script:
+   - Sets up port forwarding from Windows to WSL
+   - Configures Windows Firewall for Expo ports
+   - Enables access from Android devices on the same network
+
+4. Start development:
+   ```bash
    npm start
    ```
 
-4. Run on a device or emulator:
+### Running the App
+
+1. Start the Metro bundler:
+   ```bash
+   npm start
    ```
+
+2. Run on device:
+   ```bash
+   # Android
    npm run android
-   # or
+   
+   # iOS
    npm run ios
    ```
 
+3. For Android devices:
+   - Install Expo Go
+   - Connect to same network as your PC
+   - Scan QR code or enter URL shown in terminal
+
 ## Customizing Routines
 
-The app loads routines from a JSON file. You can modify the `routines.json` file in the repository to customize your routines.
-
-Structure:
+Routines are defined in JSON format. Example:
 ```json
 {
   "routines": [
@@ -74,7 +97,7 @@ Structure:
         "days": ["Monday", "Tuesday", ...]
       },
       "steps": [
-        { "text": "Step description", "intention": "Optional intention", "duration": 5 }
+        { "text": "Step description", "intention": "Optional", "duration": 5 }
       ]
     }
   ]
