@@ -24,7 +24,10 @@ export const fetchRoutines = async (forceRefresh = false): Promise<Routine[]> =>
       const cachedRoutines = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
       if (cachedRoutines) {
         try {
-          return JSON.parse(cachedRoutines);
+          const parsedRoutines = JSON.parse(cachedRoutines);
+          console.log('fetchRoutines - timeOfDay values from cache:', 
+            parsedRoutines.map(r => ({ id: r.id, timeOfDay: r.timeOfDay })));
+          return parsedRoutines;
         } catch (e) {
           console.warn('Error parsing cached routines:', e);
         }
@@ -38,15 +41,21 @@ export const fetchRoutines = async (forceRefresh = false): Promise<Routine[]> =>
       await AsyncStorage.setItem(STORAGE_KEYS.JSON_URL, DEFAULT_JSON_URL);
     }
     
+    console.log('fetchRoutines - using URL:', jsonUrl);
+    
     try {
       // Try to fetch the data
       const response = await fetch(jsonUrl);
+      console.log('fetchRoutines - response status:', response.status);
       const data: RoutinesData = await response.json();
+      console.log('fetchRoutines - remote data:', data);
       
       // Cache the routines
       if (data.routines) {
         await AsyncStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(data.routines));
         await AsyncStorage.setItem(STORAGE_KEYS.LAST_FETCH_DATE, currentDate);
+        console.log('fetchRoutines - timeOfDay values from remote:', 
+          data.routines.map((r: Routine) => ({ id: r.id, timeOfDay: r.timeOfDay })));
         return data.routines;
       }
       throw new Error('No routines found in response');
@@ -56,6 +65,8 @@ export const fetchRoutines = async (forceRefresh = false): Promise<Routine[]> =>
       const defaultRoutines = DEFAULT_ROUTINES.routines;
       await AsyncStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(defaultRoutines));
       await AsyncStorage.setItem(STORAGE_KEYS.LAST_FETCH_DATE, currentDate);
+      console.log('fetchRoutines - timeOfDay values from default:', 
+        defaultRoutines.map((r: Routine) => ({ id: r.id, timeOfDay: r.timeOfDay })));
       return defaultRoutines;
     }
   } catch (error) {
@@ -65,13 +76,18 @@ export const fetchRoutines = async (forceRefresh = false): Promise<Routine[]> =>
     try {
       const cachedRoutines = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINES);
       if (cachedRoutines) {
-        return JSON.parse(cachedRoutines);
+        const parsedRoutines = JSON.parse(cachedRoutines);
+        console.log('fetchRoutines - timeOfDay values from cache:', 
+          parsedRoutines.map((r: Routine) => ({ id: r.id, timeOfDay: r.timeOfDay })));
+        return parsedRoutines;
       }
     } catch (e) {
       console.warn('Error using cached routines:', e);
     }
     
     // If no cached data, use default routines
+    console.log('fetchRoutines - timeOfDay values from fallback default:', 
+      DEFAULT_ROUTINES.routines.map((r: Routine) => ({ id: r.id, timeOfDay: r.timeOfDay })));
     return DEFAULT_ROUTINES.routines;
   }
 };
@@ -159,6 +175,8 @@ export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
     }));
     
     console.log('getTodayRoutines - routinesWithStatus:', routinesWithStatus);
+    console.log('getTodayRoutines - timeOfDay values:', 
+      routinesWithStatus.map(r => ({ id: r.id, timeOfDay: r.timeOfDay })));
     
     return routinesWithStatus;
   } catch (error) {

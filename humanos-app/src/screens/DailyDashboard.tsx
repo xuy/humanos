@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ActivityIndicator, 
   FlatList, 
@@ -6,7 +6,8 @@ import {
   StyleSheet, 
   Text, 
   TouchableOpacity, 
-  View 
+  View,
+  Animated
 } from 'react-native';
 import { format } from 'date-fns';
 import RoutineCard from '../components/RoutineCard';
@@ -38,6 +39,9 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
     updateRoutineStatus 
   } = useRoutines();
   
+  const [expandedRoutines, setExpandedRoutines] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  
   const currentDate = format(new Date(), 'EEEE, MMMM d');
 
   // Debug logging
@@ -46,6 +50,30 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
     console.log('DailyDashboard - error:', error);
     console.log('DailyDashboard - todayRoutines:', todayRoutines);
   }, [isLoading, error, todayRoutines]);
+
+  const toggleRoutine = (routineId: string) => {
+    setExpandedRoutines(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(routineId)) {
+        newSet.delete(routineId);
+      } else {
+        newSet.add(routineId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleGroup = (groupTitle: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupTitle)) {
+        newSet.delete(groupTitle);
+      } else {
+        newSet.add(groupTitle);
+      }
+      return newSet;
+    });
+  };
 
   const handleRoutinePress = (routine: RoutineWithStatus) => {
     // If routine is not started, mark it as in progress
@@ -94,7 +122,77 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
   // Debug logging for grouped routines
   useEffect(() => {
     console.log('DailyDashboard - groupedRoutines:', groupedRoutines);
+    console.log('DailyDashboard - todayRoutines timeOfDay values:', 
+      todayRoutines.map(r => ({ id: r.id, timeOfDay: r.timeOfDay })));
   }, [groupedRoutines]);
+
+  const renderCollapsedRoutine = (routine: RoutineWithStatus) => (
+    <TouchableOpacity
+      style={styles.collapsedRoutine}
+      onPress={() => toggleRoutine(routine.id)}
+    >
+      <View style={styles.collapsedRoutineContent}>
+        <Text style={styles.collapsedRoutineTitle}>
+          {routine.emoji} {routine.name}
+        </Text>
+        <Text style={styles.collapsedRoutineTime}>
+          {routine.trigger.start} - {routine.trigger.end}
+        </Text>
+      </View>
+      <Text style={styles.expandIcon}>▼</Text>
+    </TouchableOpacity>
+  );
+
+  const renderGroup = ({ item }: { item: TimeOfDayGroup }) => {
+    if (item.routines.length === 0) return null;
+
+    const isGroupExpanded = expandedGroups.has(item.title);
+    const allCompleted = item.routines.every(r => r.status === 'completed');
+
+    if (!isGroupExpanded && allCompleted) {
+      return (
+        <TouchableOpacity
+          style={styles.collapsedGroup}
+          onPress={() => toggleGroup(item.title)}
+        >
+          <View style={styles.collapsedGroupHeader}>
+            <Text style={styles.collapsedGroupTitle}>
+              {item.emoji} {item.title} ({item.routines.length} completed)
+            </Text>
+            <Text style={styles.expandIcon}>▼</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <View style={styles.groupContainer}>
+        <TouchableOpacity
+          style={styles.groupHeader}
+          onPress={() => toggleGroup(item.title)}
+        >
+          <Text style={styles.groupEmoji}>{item.emoji}</Text>
+          <Text style={styles.groupTitle}>{item.title}</Text>
+          <Text style={styles.expandIcon}>
+            {isGroupExpanded ? '▼' : '▶'}
+          </Text>
+        </TouchableOpacity>
+        {isGroupExpanded && item.routines.map(routine => {
+          const isExpanded = expandedRoutines.has(routine.id);
+          if (routine.status === 'completed' && !isExpanded) {
+            return renderCollapsedRoutine(routine);
+          }
+          return (
+            <RoutineCard 
+              key={routine.id}
+              routine={routine} 
+              onPress={handleRoutinePress} 
+            />
+          );
+        })}
+      </View>
+    );
+  };
 
   // Error state
   if (error) {
@@ -113,26 +211,6 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
       </View>
     );
   }
-
-  const renderGroup = ({ item }: { item: TimeOfDayGroup }) => {
-    if (item.routines.length === 0) return null;
-
-    return (
-      <View style={styles.groupContainer}>
-        <View style={styles.groupHeader}>
-          <Text style={styles.groupEmoji}>{item.emoji}</Text>
-          <Text style={styles.groupTitle}>{item.title}</Text>
-        </View>
-        {item.routines.map(routine => (
-          <RoutineCard 
-            key={routine.id}
-            routine={routine} 
-            onPress={handleRoutinePress} 
-          />
-        ))}
-      </View>
-    );
-  };
 
   return (
     <View style={styles.container}>
@@ -226,6 +304,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    padding: 8,
   },
   groupEmoji: {
     fontSize: 20,
@@ -235,6 +314,47 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+  },
+  collapsedRoutine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  collapsedRoutineContent: {
+    flex: 1,
+  },
+  collapsedRoutineTitle: {
+    fontSize: 16,
+    color: '#666',
+  },
+  collapsedRoutineTime: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  collapsedGroup: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    marginBottom: 16,
+    padding: 12,
+  },
+  collapsedGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  collapsedGroupTitle: {
+    fontSize: 16,
+    color: '#666',
+  },
+  expandIcon: {
+    fontSize: 16,
+    color: '#666',
+    marginLeft: 8,
   },
 });
 
