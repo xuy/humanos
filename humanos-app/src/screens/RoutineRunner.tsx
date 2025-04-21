@@ -58,8 +58,10 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
 
   const handleSkipStep = () => {
     if (isLastStep) {
-      // If skipping last step, mark as in_progress
-      updateRoutineStatus(routine.id, 'in_progress');
+      // If skipping last step, only mark as in_progress if we've completed at least one step
+      if (currentStepIndex > 0) {
+        updateRoutineStatus(routine.id, 'in_progress');
+      }
       navigateBack();
     } else {
       setCurrentStepIndex(prev => prev + 1);

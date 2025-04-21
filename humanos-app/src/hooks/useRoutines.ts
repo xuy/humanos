@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Routine, RoutineStatus, RoutineWithStatus } from '../types';
 import { 
   fetchRoutines, 
@@ -13,15 +13,12 @@ export const useRoutines = () => {
   const [todayRoutines, setTodayRoutines] = useState<RoutineWithStatus[]>([]);
   const [allRoutines, setAllRoutines] = useState<Routine[]>([]);
 
-  const loadRoutines = async (forceRefresh = false) => {
+  const loadRoutines = useCallback(async (forceRefresh = false) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Reset routine statuses if needed (e.g., new day)
-      await resetRoutineStatuses();
-      
-      // Load today's routines
+      // Load today's routines first
       const routinesForToday = await getTodayRoutines();
       setTodayRoutines(routinesForToday);
       
@@ -34,30 +31,23 @@ export const useRoutines = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Update a routine's status
-  const updateStatus = async (routineId: string, status: RoutineStatus) => {
+  const updateStatus = useCallback(async (routineId: string, status: RoutineStatus) => {
     try {
       await updateRoutineStatus(routineId, status);
-      
-      // Update the local state
-      setTodayRoutines(prev => 
-        prev.map(routine => 
-          routine.id === routineId 
-            ? { ...routine, status } 
-            : routine
-        )
-      );
+      // Reload routines to ensure consistency
+      await loadRoutines(true);
     } catch (err) {
       console.error('Error updating routine status:', err);
     }
-  };
+  }, [loadRoutines]);
 
   // Initial load
   useEffect(() => {
     loadRoutines();
-  }, []);
+  }, [loadRoutines]);
 
   return {
     isLoading,

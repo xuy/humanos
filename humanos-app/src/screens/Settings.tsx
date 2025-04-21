@@ -24,8 +24,26 @@ const Settings: React.FC = () => {
   const [jsonUrl, setJsonUrlState] = useState('');
   const [developerMode, setDeveloperMode] = useState(false);
   const [rawJson, setRawJson] = useState('');
+  const [statusData, setStatusData] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { refreshRoutines } = useRoutines();
+  const { refreshRoutines, todayRoutines } = useRoutines();
+  
+  // Function to update status display
+  const updateStatusDisplay = async () => {
+    if (developerMode) {
+      try {
+        const statusJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
+        if (statusJson) {
+          setStatusData(JSON.stringify(JSON.parse(statusJson), null, 2));
+        } else {
+          setStatusData('{}');
+        }
+      } catch (error) {
+        console.error('Error updating status display:', error);
+        setStatusData('Error loading status data');
+      }
+    }
+  };
   
   // Load initial values
   React.useEffect(() => {
@@ -42,10 +60,16 @@ const Settings: React.FC = () => {
         if (routinesJson) {
           setRawJson(JSON.stringify(JSON.parse(routinesJson), null, 2));
         }
+        await updateStatusDisplay();
       }
     };
     loadSettings();
   }, []);
+
+  // Update status data display when routines change
+  React.useEffect(() => {
+    updateStatusDisplay();
+  }, [todayRoutines, developerMode]);
   
   const handleSaveUrl = async () => {
     try {
@@ -66,6 +90,7 @@ const Settings: React.FC = () => {
       if (routinesJson) {
         setRawJson(JSON.stringify(JSON.parse(routinesJson), null, 2));
       }
+      await updateStatusDisplay();
     }
   };
   
@@ -95,12 +120,13 @@ const Settings: React.FC = () => {
   const clearTodayStatus = async () => {
     try {
       const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
+      const currentDate = new Date().toISOString().split('T')[0];
+      let updatedStatuses = {};
+      
       if (statusesJson) {
         const statuses = JSON.parse(statusesJson);
-        const currentDate = new Date().toISOString().split('T')[0];
-        
         // Reset all statuses to not_started
-        const updatedStatuses = Object.fromEntries(
+        updatedStatuses = Object.fromEntries(
           Object.entries(statuses).map(([key, value]) => {
             const lastUpdated = (value as any).lastUpdated;
             if (lastUpdated && lastUpdated.startsWith(currentDate)) {
@@ -109,11 +135,12 @@ const Settings: React.FC = () => {
             return [key, value];
           })
         );
-        
-        await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(updatedStatuses));
-        Alert.alert('Success', "Today's statuses reset to not started");
-        handleRefreshRoutines();
       }
+      
+      await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(updatedStatuses));
+      Alert.alert('Success', "Today's statuses reset to not started");
+      // Use the hook's refresh function to ensure consistency
+      await refreshRoutines();
     } catch (error) {
       Alert.alert('Error', 'Failed to reset today\'s statuses');
     }
@@ -180,12 +207,29 @@ const Settings: React.FC = () => {
       </View>
       
       {developerMode && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Raw JSON</Text>
-          <View style={styles.jsonContainer}>
-            <Text style={styles.jsonText}>{rawJson}</Text>
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Raw JSON</Text>
+            <View style={styles.jsonContainer}>
+              <Text style={styles.jsonText}>{rawJson}</Text>
+            </View>
           </View>
-        </View>
+          
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Status Data</Text>
+              <TouchableOpacity 
+                style={styles.refreshButton}
+                onPress={updateStatusDisplay}
+              >
+                <Text style={styles.refreshButtonText}>Refresh</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.jsonContainer}>
+              <Text style={styles.jsonText}>{statusData}</Text>
+            </View>
+          </View>
+        </>
       )}
     </ScrollView>
   );
@@ -251,6 +295,22 @@ const styles = StyleSheet.create({
   },
   jsonText: {
     fontFamily: 'monospace',
+    fontSize: 12,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  refreshButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  refreshButtonText: {
+    color: '#FFFFFF',
     fontSize: 12,
   },
 });

@@ -95,16 +95,48 @@ export const setJsonUrl = async (url: string): Promise<void> => {
   }
 };
 
+// Migrate status data to new format
+const migrateStatusData = async (): Promise<void> => {
+  try {
+    const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
+    if (!statusesJson) return;
+
+    const statuses = JSON.parse(statusesJson);
+    const migratedStatuses: Record<string, { status: RoutineStatus; lastUpdated: string }> = {};
+
+    // Migrate each status to the new format
+    Object.entries(statuses).forEach(([routineId, value]) => {
+      if (typeof value === 'string') {
+        // Old format: just a status string
+        migratedStatuses[routineId] = {
+          status: value as RoutineStatus,
+          lastUpdated: new Date().toISOString()
+        };
+      } else if (value && typeof value === 'object' && 'status' in value) {
+        // Already in new format
+        migratedStatuses[routineId] = value as { status: RoutineStatus; lastUpdated: string };
+      }
+    });
+
+    // Save migrated data
+    await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(migratedStatuses));
+  } catch (error) {
+    console.error('Error migrating status data:', error);
+  }
+};
+
 // Get routines for today
 export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
   try {
+    // Ensure status data is migrated
+    await migrateStatusData();
+
     const routines = await fetchRoutines();
-    const currentDay = format(new Date(), 'EEEE'); // e.g., "Monday"
-    const currentTime = format(new Date(), 'HH:mm'); // e.g., "08:30"
+    const currentDay = format(new Date(), 'EEEE');
     
     // Get saved routine statuses
     const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
-    const statuses: Record<string, RoutineStatus> = statusesJson ? JSON.parse(statusesJson) : {};
+    const statuses: Record<string, { status: RoutineStatus; lastUpdated: string }> = statusesJson ? JSON.parse(statusesJson) : {};
     
     // Filter routines for today
     const todayRoutines = routines.filter(routine => {
@@ -114,7 +146,7 @@ export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
     // Add status to each routine
     return todayRoutines.map(routine => ({
       ...routine,
-      status: statuses[routine.id] || 'not_started'
+      status: statuses[routine.id]?.status || 'not_started'
     }));
   } catch (error) {
     console.error('Error getting today routines:', error);
@@ -149,10 +181,16 @@ export const isRoutineActive = (routine: Routine): boolean => {
 // Update a routine's status
 export const updateRoutineStatus = async (routineId: string, status: RoutineStatus): Promise<void> => {
   try {
+    // Ensure status data is migrated
+    await migrateStatusData();
+
     const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
-    const statuses: Record<string, RoutineStatus> = statusesJson ? JSON.parse(statusesJson) : {};
+    const statuses: Record<string, { status: RoutineStatus; lastUpdated: string }> = statusesJson ? JSON.parse(statusesJson) : {};
     
-    statuses[routineId] = status;
+    statuses[routineId] = {
+      status,
+      lastUpdated: new Date().toISOString()
+    };
     
     await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(statuses));
   } catch (error) {
