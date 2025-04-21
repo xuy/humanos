@@ -44,12 +44,29 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
       <Text style={styles.emptyText}>No routines scheduled for today</Text>
       <TouchableOpacity 
         style={styles.button} 
-        onPress={() => navigation.navigate('WeeklyView')}
+        onPress={() => navigation.navigate('Weekly')}
       >
         <Text style={styles.buttonText}>View Weekly Schedule</Text>
       </TouchableOpacity>
     </View>
   );
+
+  const getStatusPriority = (status: string) => {
+    switch (status) {
+      case 'in_progress':
+        return 0;
+      case 'not_started':
+        return 1;
+      case 'completed':
+        return 2;
+      default:
+        return 3;
+    }
+  };
+
+  const sortedRoutines = [...todayRoutines].sort((a, b) => {
+    return getStatusPriority(a.status) - getStatusPriority(b.status);
+  });
 
   // Error state
   if (error) {
@@ -80,7 +97,7 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
-          data={todayRoutines}
+          data={sortedRoutines}
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <RoutineCard 

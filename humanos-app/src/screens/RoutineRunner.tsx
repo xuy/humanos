@@ -38,28 +38,21 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
     }
   };
 
-  const handleNextStep = () => {
-    // Mark current step as completed
-    if (!completedSteps.includes(currentStepIndex)) {
-      setCompletedSteps([...completedSteps, currentStepIndex]);
-    }
-
-    if (isLastStep) {
-      // Only mark as completed if all steps are done (not skipped)
-      if (completedSteps.length === totalSteps - 1) {
-        updateRoutineStatus(routine.id, 'completed');
-      } else {
-        updateRoutineStatus(routine.id, 'in_progress');
-      }
-      navigateBack();
+  const handleNext = () => {
+    if (currentStepIndex < routine.steps.length - 1) {
+      setCurrentStepIndex(currentStepIndex + 1);
     } else {
-      setCurrentStepIndex(prev => prev + 1);
+      // Mark routine as completed when all steps are done
+      updateRoutineStatus(routine.id, 'completed');
+      navigation.goBack();
     }
   };
 
-  const handlePreviousStep = () => {
-    if (!isFirstStep) {
-      setCurrentStepIndex(prev => prev - 1);
+  const handleBack = () => {
+    if (currentStepIndex > 0) {
+      setCurrentStepIndex(currentStepIndex - 1);
+    } else {
+      navigation.goBack();
     }
   };
 
@@ -74,8 +67,8 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
   };
   
   const handleExit = () => {
-    // If we have completed steps, keep them in progress
-    if (completedSteps.length > 0) {
+    // Only set in_progress if we've completed at least one step
+    if (currentStepIndex > 0) {
       updateRoutineStatus(routine.id, 'in_progress');
     }
     navigateBack();
@@ -101,7 +94,7 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
       <TouchableOpacity 
         style={styles.mainContent} 
         activeOpacity={0.8}
-        onPress={handleNextStep}
+        onPress={handleNext}
       >
         <View style={styles.stepContainer}>
           <Text style={styles.stepText}>{currentStep.text}</Text>
@@ -130,7 +123,7 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
         <View style={styles.navigationButtons}>
           <TouchableOpacity 
             style={[styles.navButton, isFirstStep && styles.disabledButton]}
-            onPress={handlePreviousStep}
+            onPress={handleBack}
             disabled={isFirstStep}
           >
             <Text style={[styles.navButtonText, isFirstStep && styles.disabledButtonText]}>Back</Text>
