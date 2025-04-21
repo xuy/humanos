@@ -1,15 +1,31 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RoutineWithStatus } from '../types';
-import { isRoutineActive } from '../utils/routines';
+import { isRoutineActive, isNextUp } from '../utils/routines';
+
+// Tag to emoji mapping
+const TAG_EMOJIS: Record<string, string> = {
+  'morning': '☀️',
+  'evening': '🌙',
+  'hydration': '💧',
+  'shower': '🚿',
+  'sleep': '😴',
+  'fitness': '💪',
+  'health': '❤️',
+  'wake': '⏰',
+  'daily': '📅',
+  'weekly': '📆'
+};
 
 type RoutineCardProps = {
   routine: RoutineWithStatus;
   onPress: (routine: RoutineWithStatus) => void;
+  currentTime?: Date;
 };
 
-const RoutineCard: React.FC<RoutineCardProps> = ({ routine, onPress }) => {
+const RoutineCard: React.FC<RoutineCardProps> = ({ routine, onPress, currentTime = new Date() }) => {
   const isActive = isRoutineActive(routine);
+  const isNext = isNextUp(routine, currentTime);
   
   // Status indicator colors
   const getStatusColor = () => {
@@ -39,26 +55,44 @@ const RoutineCard: React.FC<RoutineCardProps> = ({ routine, onPress }) => {
 
   return (
     <TouchableOpacity
-      style={[styles.card, { borderLeftColor: getStatusColor() }]}
+      style={[
+        styles.card,
+        { borderLeftColor: getStatusColor() },
+        isNext && styles.nextUpCard
+      ]}
       onPress={() => onPress(routine)}
       activeOpacity={0.7}
     >
       <View style={styles.content}>
-        <Text style={styles.title}>{routine.name}</Text>
+        <View style={styles.titleRow}>
+          {routine.emoji && (
+            <Text style={styles.emoji}>{routine.emoji}</Text>
+          )}
+          <Text style={styles.title}>{routine.name}</Text>
+        </View>
         <Text style={styles.time}>
           {routine.trigger.start} - {routine.trigger.end}
         </Text>
         <View style={styles.tags}>
           {routine.tags.map(tag => (
             <View key={tag} style={styles.tag}>
-              <Text style={styles.tagText}>{tag}</Text>
+              <Text style={styles.tagText}>
+                {TAG_EMOJIS[tag] ? `${TAG_EMOJIS[tag]} ` : ''}{tag}
+              </Text>
             </View>
           ))}
         </View>
       </View>
       
-      <View style={[styles.status, { backgroundColor: getStatusColor() }]}>
-        <Text style={styles.statusText}>{getStatusText()}</Text>
+      <View style={styles.statusContainer}>
+        {isNext && (
+          <View style={styles.nextUpBadge}>
+            <Text style={styles.nextUpText}>Next Up</Text>
+          </View>
+        )}
+        <View style={[styles.status, { backgroundColor: getStatusColor() }]}>
+          <Text style={styles.statusText}>{getStatusText()}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -77,13 +111,25 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderLeftWidth: 4,
   },
+  nextUpCard: {
+    backgroundColor: '#FFF8E1', // Light yellow background for next up
+    borderLeftColor: '#FFC107', // Amber border for next up
+  },
   content: {
     flex: 1,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  emoji: {
+    fontSize: 20,
+    marginRight: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 4,
   },
   time: {
     fontSize: 14,
@@ -106,12 +152,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  status: {
-    alignSelf: 'flex-start',
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  nextUpBadge: {
+    backgroundColor: '#FFC107',
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    marginTop: 8,
+    marginRight: 8,
+  },
+  nextUpText: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  status: {
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   statusText: {
     color: '#FFF',

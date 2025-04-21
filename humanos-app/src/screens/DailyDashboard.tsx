@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { 
   ActivityIndicator, 
   FlatList, 
@@ -17,6 +17,18 @@ type DailyDashboardProps = {
   navigation: any;
 };
 
+type TimeOfDayGroup = {
+  title: string;
+  emoji: string;
+  routines: RoutineWithStatus[];
+};
+
+const TIME_OF_DAY_GROUPS: TimeOfDayGroup[] = [
+  { title: 'Morning', emoji: '☀️', routines: [] },
+  { title: 'Afternoon', emoji: '🌤️', routines: [] },
+  { title: 'Evening', emoji: '🌙', routines: [] }
+];
+
 const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
   const { 
     isLoading, 
@@ -27,6 +39,13 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
   } = useRoutines();
   
   const currentDate = format(new Date(), 'EEEE, MMMM d');
+
+  // Debug logging
+  useEffect(() => {
+    console.log('DailyDashboard - isLoading:', isLoading);
+    console.log('DailyDashboard - error:', error);
+    console.log('DailyDashboard - todayRoutines:', todayRoutines);
+  }, [isLoading, error, todayRoutines]);
 
   const handleRoutinePress = (routine: RoutineWithStatus) => {
     // If routine is not started, mark it as in progress
@@ -64,9 +83,18 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
     }
   };
 
-  const sortedRoutines = [...todayRoutines].sort((a, b) => {
-    return getStatusPriority(a.status) - getStatusPriority(b.status);
-  });
+  // Group routines by time of day
+  const groupedRoutines = TIME_OF_DAY_GROUPS.map(group => ({
+    ...group,
+    routines: todayRoutines
+      .filter(routine => routine.timeOfDay?.toLowerCase() === group.title.toLowerCase())
+      .sort((a, b) => getStatusPriority(a.status) - getStatusPriority(b.status))
+  }));
+
+  // Debug logging for grouped routines
+  useEffect(() => {
+    console.log('DailyDashboard - groupedRoutines:', groupedRoutines);
+  }, [groupedRoutines]);
 
   // Error state
   if (error) {
@@ -86,6 +114,26 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
     );
   }
 
+  const renderGroup = ({ item }: { item: TimeOfDayGroup }) => {
+    if (item.routines.length === 0) return null;
+
+    return (
+      <View style={styles.groupContainer}>
+        <View style={styles.groupHeader}>
+          <Text style={styles.groupEmoji}>{item.emoji}</Text>
+          <Text style={styles.groupTitle}>{item.title}</Text>
+        </View>
+        {item.routines.map(routine => (
+          <RoutineCard 
+            key={routine.id}
+            routine={routine} 
+            onPress={handleRoutinePress} 
+          />
+        ))}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.date}>{currentDate}</Text>
@@ -97,14 +145,9 @@ const DailyDashboard: React.FC<DailyDashboardProps> = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
-          data={sortedRoutines}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <RoutineCard 
-              routine={item} 
-              onPress={handleRoutinePress} 
-            />
-          )}
+          data={groupedRoutines}
+          keyExtractor={item => item.title}
+          renderItem={renderGroup}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={renderEmptyState}
           refreshControl={
@@ -175,6 +218,23 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '500',
+  },
+  groupContainer: {
+    marginBottom: 24,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  groupEmoji: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  groupTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
   },
 });
 

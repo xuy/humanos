@@ -134,20 +134,33 @@ export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
     const routines = await fetchRoutines();
     const currentDay = format(new Date(), 'EEEE');
     
+    console.log('getTodayRoutines - currentDay:', currentDay);
+    console.log('getTodayRoutines - all routines:', routines);
+    
     // Get saved routine statuses
     const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
     const statuses: Record<string, { status: RoutineStatus; lastUpdated: string }> = statusesJson ? JSON.parse(statusesJson) : {};
     
+    console.log('getTodayRoutines - statuses:', statuses);
+    
     // Filter routines for today
     const todayRoutines = routines.filter(routine => {
-      return routine.trigger.days.includes(currentDay);
+      const isToday = routine.trigger.days.includes(currentDay);
+      console.log(`getTodayRoutines - routine ${routine.id} is today:`, isToday);
+      return isToday;
     });
     
+    console.log('getTodayRoutines - todayRoutines:', todayRoutines);
+    
     // Add status to each routine
-    return todayRoutines.map(routine => ({
+    const routinesWithStatus = todayRoutines.map(routine => ({
       ...routine,
       status: statuses[routine.id]?.status || 'not_started'
     }));
+    
+    console.log('getTodayRoutines - routinesWithStatus:', routinesWithStatus);
+    
+    return routinesWithStatus;
   } catch (error) {
     console.error('Error getting today routines:', error);
     return [];
@@ -210,5 +223,35 @@ export const resetRoutineStatuses = async (): Promise<void> => {
     }
   } catch (error) {
     console.error('Error resetting routine statuses:', error);
+  }
+};
+
+// Check if a routine is the next one to be completed
+export const isNextUp = (routine: Routine, currentTime: Date = new Date()): boolean => {
+  const currentHour = currentTime.getHours();
+  const currentMinutes = currentTime.getMinutes();
+  const currentTimeInMinutes = currentHour * 60 + currentMinutes;
+
+  try {
+    const [preferredHour, preferredMinutes] = routine.trigger.preferred.split(':').map(Number);
+    const preferredTimeInMinutes = preferredHour * 60 + preferredMinutes;
+
+    // Only consider routines that haven't started yet
+    if (currentTimeInMinutes >= preferredTimeInMinutes) {
+      return false;
+    }
+
+    // Get all routines for today
+    const currentDay = format(currentTime, 'EEEE');
+    if (!routine.trigger.days.includes(currentDay)) {
+      return false;
+    }
+
+    // This is a simple implementation - in a real app, you might want to
+    // compare with other routines to find the actual next one
+    return true;
+  } catch (error) {
+    console.error('Error checking if routine is next up:', error);
+    return false;
   }
 };

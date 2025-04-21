@@ -4,6 +4,8 @@
       "id": "wake_flow",
       "name": "Morning Wake Flow",
       "tags": ["morning", "wake"],
+      "emoji": "☀️",
+      "timeOfDay": "morning",
       "trigger": {
         "type": "time_window",
         "start": "05:30",
@@ -22,6 +24,8 @@
       "id": "hydration_protocol",
       "name": "Hydration OS",
       "tags": ["daily", "hydration"],
+      "emoji": "💧",
+      "timeOfDay": "morning",
       "trigger": {
         "type": "time_window",
         "start": "07:00",
@@ -39,6 +43,8 @@
       "id": "sunday_shower",
       "name": "Full Shower Ritual",
       "tags": ["shower", "weekly"],
+      "emoji": "🧴",
+      "timeOfDay": "morning",
       "trigger": {
         "type": "time_window",
         "start": "08:00",
@@ -57,6 +63,8 @@
       "id": "evening_wind_down",
       "name": "Evening Wind Down",
       "tags": ["evening", "sleep"],
+      "emoji": "🌙",
+      "timeOfDay": "evening",
       "trigger": {
         "type": "time_window",
         "start": "20:00",
@@ -76,6 +84,8 @@
       "id": "workout_session",
       "name": "Workout Protocol",
       "tags": ["fitness", "health"],
+      "emoji": "💪",
+      "timeOfDay": "afternoon",
       "trigger": {
         "type": "time_window",
         "start": "16:00",

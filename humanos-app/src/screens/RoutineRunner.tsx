@@ -7,7 +7,8 @@ import {
   SafeAreaView,
   Dimensions,
   Alert,
-  Platform
+  Platform,
+  Modal
 } from 'react-native';
 import { RoutineWithStatus, Step } from '../types';
 import useRoutines from '../hooks/useRoutines';
@@ -22,6 +23,7 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
   const { updateRoutineStatus } = useRoutines();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [showIntention, setShowIntention] = useState(false);
   
   const currentStep = routine.steps[currentStepIndex];
   const totalSteps = routine.steps.length;
@@ -41,6 +43,7 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
   const handleNext = () => {
     if (currentStepIndex < routine.steps.length - 1) {
       setCurrentStepIndex(currentStepIndex + 1);
+      setShowIntention(false);
     } else {
       // Mark routine as completed when all steps are done
       updateRoutineStatus(routine.id, 'completed');
@@ -51,6 +54,7 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
   const handleBack = () => {
     if (currentStepIndex > 0) {
       setCurrentStepIndex(currentStepIndex - 1);
+      setShowIntention(false);
     } else {
       navigation.goBack();
     }
@@ -65,6 +69,7 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
       navigateBack();
     } else {
       setCurrentStepIndex(prev => prev + 1);
+      setShowIntention(false);
     }
   };
   
@@ -74,6 +79,10 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
       updateRoutineStatus(routine.id, 'in_progress');
     }
     navigateBack();
+  };
+
+  const toggleIntention = () => {
+    setShowIntention(!showIntention);
   };
 
   return (
@@ -102,9 +111,12 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
           <Text style={styles.stepText}>{currentStep.text}</Text>
           
           {currentStep.intention && (
-            <Text style={styles.intentionText}>
-              {currentStep.intention}
-            </Text>
+            <TouchableOpacity 
+              style={styles.intentionButton}
+              onPress={toggleIntention}
+            >
+              <Text style={styles.intentionButtonText}>Why?</Text>
+            </TouchableOpacity>
           )}
           
           {currentStep.duration && (
@@ -139,6 +151,26 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      <Modal
+        visible={showIntention}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowIntention(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Why?</Text>
+            <Text style={styles.modalText}>{currentStep.intention}</Text>
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setShowIntention(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -193,12 +225,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  intentionText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    fontStyle: 'italic',
+  intentionButton: {
+    backgroundColor: '#F0F0F0',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     marginTop: 8,
+  },
+  intentionButtonText: {
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '500',
   },
   durationContainer: {
     backgroundColor: '#F0F0F0',
@@ -244,6 +281,43 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: '#999',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: width - 48,
+    maxHeight: height * 0.4,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#666',
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  closeButton: {
+    marginTop: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: '#2196F3',
   },
 });
 
