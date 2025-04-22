@@ -100,6 +100,90 @@
         { "text": "Drink 16oz of water", "intention": "Hydration" },
         { "text": "Log workout details (optional)" }
       ]
+    },
+    {
+      "id": "am_skincare",
+      "name": "AM Skincare",
+      "tags": ["skin", "morning"],
+      "emoji": "🧴",
+      "timeOfDay": "morning",
+      "routineGroup": "skincare",
+      "trigger": {
+        "type": "time_window",
+        "start": "06:30",
+        "end": "09:00",
+        "preferred": "07:30",
+        "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+      },
+      "steps": [
+        { "text": "Splash water or use gentle face cleanser" },
+        { "text": "Apply Vitamin C serum (CeraVe)", "intention": "Brighten and protect" },
+        { "text": "Apply Eye Cream (CeraVe Renewing)" },
+        { "text": "Seal with sunscreen or BB cream" }
+      ]
+    },
+    {
+      "id": "pm_skincare_bha",
+      "name": "PM Skincare (BHA)",
+      "tags": ["skin", "evening", "exfoliate"],
+      "emoji": "🧴",
+      "timeOfDay": "evening",
+      "routineGroup": "skincare",
+      "trigger": {
+        "type": "time_window",
+        "start": "21:00",
+        "end": "23:00",
+        "preferred": "22:00",
+        "days": ["Sunday", "Wednesday"]
+      },
+      "steps": [
+        { "text": "Gentle face wash" },
+        { "text": "Apply Naturium BHA 2%" },
+        { "text": "Apply Eye Cream" },
+        { "text": "Seal with moisturizer or night cream" }
+      ]
+    },
+    {
+      "id": "pm_skincare_basic",
+      "name": "PM Skincare (Basic)",
+      "tags": ["skin", "evening"],
+      "emoji": "🧴",
+      "timeOfDay": "evening",
+      "routineGroup": "skincare",
+      "trigger": {
+        "type": "time_window",
+        "start": "21:00",
+        "end": "23:00",
+        "preferred": "22:00",
+        "days": ["Monday", "Tuesday", "Thursday", "Friday", "Saturday"]
+      },
+      "steps": [
+        { "text": "Gentle face wash" },
+        { "text": "Apply Eye Cream" },
+        { "text": "Seal with moisturizer" }
+      ]
+    },
+    {
+      "id": "hair_refresh_day_after_wash",
+      "name": "Hair Refresh (Day-After-Wash)",
+      "tags": ["hair", "refresh"],
+      "emoji": "💇‍♂️",
+      "timeOfDay": "morning",
+      "routineGroup": "haircare",
+      "trigger": {
+        "type": "time_window",
+        "start": "07:00",
+        "end": "10:00",
+        "preferred": "08:00",
+        "days": ["Monday", "Thursday"]
+      },
+      "steps": [
+        { "text": "Mist hair with fine water spray" },
+        { "text": "Squeeze to re-shape curls" },
+        { "text": "Apply light Maui Moisture product" },
+        { "text": "Steam cap (10 min)", "duration": 10 },
+        { "text": "Secure front with invisible band if needed" }
+      ]
     }
   ]
 }
