@@ -26,7 +26,7 @@ export const fetchRoutines = async (forceRefresh = false): Promise<Routine[]> =>
         try {
           const parsedRoutines = JSON.parse(cachedRoutines);
           console.log('fetchRoutines - timeOfDay values from cache:', 
-            parsedRoutines.map(r => ({ id: r.id, timeOfDay: r.timeOfDay })));
+            parsedRoutines.map((r: Routine) => ({ id: r.id, timeOfDay: r.timeOfDay })));
           return parsedRoutines;
         } catch (e) {
           console.warn('Error parsing cached routines:', e);
@@ -118,19 +118,36 @@ const migrateStatusData = async (): Promise<void> => {
     if (!statusesJson) return;
 
     const statuses = JSON.parse(statusesJson);
-    const migratedStatuses: Record<string, { status: RoutineStatus; lastUpdated: string }> = {};
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
+    const migratedStatuses: Record<string, Record<string, { status: RoutineStatus; lastUpdated: string }>> = {};
 
     // Migrate each status to the new format
     Object.entries(statuses).forEach(([routineId, value]) => {
       if (typeof value === 'string') {
         // Old format: just a status string
-        migratedStatuses[routineId] = {
+        if (!migratedStatuses[currentDate]) {
+          migratedStatuses[currentDate] = {};
+        }
+        migratedStatuses[currentDate][routineId] = {
           status: value as RoutineStatus,
           lastUpdated: new Date().toISOString()
         };
-      } else if (value && typeof value === 'object' && 'status' in value) {
-        // Already in new format
-        migratedStatuses[routineId] = value as { status: RoutineStatus; lastUpdated: string };
+      } else if (value && typeof value === 'object') {
+        if ('status' in value) {
+          // Already in new format but without date
+          if (!migratedStatuses[currentDate]) {
+            migratedStatuses[currentDate] = {};
+          }
+          migratedStatuses[currentDate][routineId] = value as { status: RoutineStatus; lastUpdated: string };
+        } else {
+          // Already in new format with date
+          Object.entries(value).forEach(([date, statusData]) => {
+            if (!migratedStatuses[date]) {
+              migratedStatuses[date] = {};
+            }
+            migratedStatuses[date][routineId] = statusData as { status: RoutineStatus; lastUpdated: string };
+          });
+        }
       }
     });
 
@@ -138,6 +155,34 @@ const migrateStatusData = async (): Promise<void> => {
     await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(migratedStatuses));
   } catch (error) {
     console.error('Error migrating status data:', error);
+  }
+};
+
+// Initialize status for all routines
+const initializeRoutineStatuses = async (routines: Routine[]): Promise<void> => {
+  try {
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
+    const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
+    const statuses: Record<string, Record<string, { status: RoutineStatus; lastUpdated: string }>> = statusesJson ? JSON.parse(statusesJson) : {};
+
+    // Ensure we have a status entry for today
+    if (!statuses[currentDate]) {
+      statuses[currentDate] = {};
+    }
+
+    // Ensure each routine has a status entry for today
+    routines.forEach(routine => {
+      if (!statuses[currentDate][routine.id]) {
+        statuses[currentDate][routine.id] = {
+          status: 'not_started',
+          lastUpdated: new Date().toISOString()
+        };
+      }
+    });
+
+    await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(statuses));
+  } catch (error) {
+    console.error('Error initializing routine statuses:', error);
   }
 };
 
@@ -149,13 +194,18 @@ export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
 
     const routines = await fetchRoutines();
     const currentDay = format(new Date(), 'EEEE');
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
     
     console.log('getTodayRoutines - currentDay:', currentDay);
+    console.log('getTodayRoutines - currentDate:', currentDate);
     console.log('getTodayRoutines - all routines:', routines);
+    
+    // Initialize statuses for all routines
+    await initializeRoutineStatuses(routines);
     
     // Get saved routine statuses
     const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
-    const statuses: Record<string, { status: RoutineStatus; lastUpdated: string }> = statusesJson ? JSON.parse(statusesJson) : {};
+    const statuses: Record<string, Record<string, { status: RoutineStatus; lastUpdated: string }>> = statusesJson ? JSON.parse(statusesJson) : {};
     
     console.log('getTodayRoutines - statuses:', statuses);
     
@@ -171,7 +221,7 @@ export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
     // Add status to each routine
     const routinesWithStatus = todayRoutines.map(routine => ({
       ...routine,
-      status: statuses[routine.id]?.status || 'not_started'
+      status: statuses[currentDate]?.[routine.id]?.status || 'not_started'
     }));
     
     console.log('getTodayRoutines - routinesWithStatus:', routinesWithStatus);
@@ -215,10 +265,15 @@ export const updateRoutineStatus = async (routineId: string, status: RoutineStat
     // Ensure status data is migrated
     await migrateStatusData();
 
+    const currentDate = format(new Date(), 'yyyy-MM-dd');
     const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
-    const statuses: Record<string, { status: RoutineStatus; lastUpdated: string }> = statusesJson ? JSON.parse(statusesJson) : {};
+    const statuses: Record<string, Record<string, { status: RoutineStatus; lastUpdated: string }>> = statusesJson ? JSON.parse(statusesJson) : {};
     
-    statuses[routineId] = {
+    if (!statuses[currentDate]) {
+      statuses[currentDate] = {};
+    }
+    
+    statuses[currentDate][routineId] = {
       status,
       lastUpdated: new Date().toISOString()
     };
@@ -236,7 +291,8 @@ export const resetRoutineStatuses = async (): Promise<void> => {
     const currentDate = format(new Date(), 'yyyy-MM-dd');
     
     if (lastResetDate !== currentDate) {
-      await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify({}));
+      const routines = await fetchRoutines();
+      await initializeRoutineStatuses(routines);
       await AsyncStorage.setItem('humanos_last_reset_date', currentDate);
     }
   } catch (error) {
