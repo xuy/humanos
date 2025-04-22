@@ -111,53 +111,6 @@ export const setJsonUrl = async (url: string): Promise<void> => {
   }
 };
 
-// Migrate status data to new format
-const migrateStatusData = async (): Promise<void> => {
-  try {
-    const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
-    if (!statusesJson) return;
-
-    const statuses = JSON.parse(statusesJson);
-    const currentDate = format(new Date(), 'yyyy-MM-dd');
-    const migratedStatuses: Record<string, Record<string, { status: RoutineStatus; lastUpdated: string }>> = {};
-
-    // Migrate each status to the new format
-    Object.entries(statuses).forEach(([routineId, value]) => {
-      if (typeof value === 'string') {
-        // Old format: just a status string
-        if (!migratedStatuses[currentDate]) {
-          migratedStatuses[currentDate] = {};
-        }
-        migratedStatuses[currentDate][routineId] = {
-          status: value as RoutineStatus,
-          lastUpdated: new Date().toISOString()
-        };
-      } else if (value && typeof value === 'object') {
-        if ('status' in value) {
-          // Already in new format but without date
-          if (!migratedStatuses[currentDate]) {
-            migratedStatuses[currentDate] = {};
-          }
-          migratedStatuses[currentDate][routineId] = value as { status: RoutineStatus; lastUpdated: string };
-        } else {
-          // Already in new format with date
-          Object.entries(value).forEach(([date, statusData]) => {
-            if (!migratedStatuses[date]) {
-              migratedStatuses[date] = {};
-            }
-            migratedStatuses[date][routineId] = statusData as { status: RoutineStatus; lastUpdated: string };
-          });
-        }
-      }
-    });
-
-    // Save migrated data
-    await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(migratedStatuses));
-  } catch (error) {
-    console.error('Error migrating status data:', error);
-  }
-};
-
 // Initialize status for all routines
 const initializeRoutineStatuses = async (routines: Routine[]): Promise<void> => {
   try {
@@ -189,9 +142,6 @@ const initializeRoutineStatuses = async (routines: Routine[]): Promise<void> => 
 // Get routines for today
 export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
   try {
-    // Ensure status data is migrated
-    await migrateStatusData();
-
     const routines = await fetchRoutines();
     const currentDay = format(new Date(), 'EEEE');
     const currentDate = format(new Date(), 'yyyy-MM-dd');
@@ -235,35 +185,9 @@ export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
   }
 };
 
-// Check if a routine is currently active based on time window
-export const isRoutineActive = (routine: Routine): boolean => {
-  const now = new Date();
-  
-  try {
-    const startTime = parse(routine.trigger.start, 'HH:mm', new Date());
-    const endTime = parse(routine.trigger.end, 'HH:mm', new Date());
-    
-    // Set hours and minutes on today's date for comparison
-    const currentDate = new Date();
-    const startDate = new Date(currentDate);
-    const endDate = new Date(currentDate);
-    
-    startDate.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
-    endDate.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
-    
-    return isWithinInterval(now, { start: startDate, end: endDate });
-  } catch (_error) {
-    console.error('Error checking if routine is active:', _error);
-    return false;
-  }
-};
-
 // Update a routine's status
 export const updateRoutineStatus = async (routineId: string, status: RoutineStatus): Promise<void> => {
   try {
-    // Ensure status data is migrated
-    await migrateStatusData();
-
     const currentDate = format(new Date(), 'yyyy-MM-dd');
     const statusesJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
     const statuses: Record<string, Record<string, { status: RoutineStatus; lastUpdated: string }>> = statusesJson ? JSON.parse(statusesJson) : {};
@@ -296,6 +220,29 @@ export const resetRoutineStatuses = async (): Promise<void> => {
     }
   } catch (error) {
     console.error('Error resetting routine statuses:', error);
+  }
+};
+
+// Check if a routine is currently active based on time window
+export const isRoutineActive = (routine: Routine): boolean => {
+  const now = new Date();
+  
+  try {
+    const startTime = parse(routine.trigger.start, 'HH:mm', new Date());
+    const endTime = parse(routine.trigger.end, 'HH:mm', new Date());
+    
+    // Set hours and minutes on today's date for comparison
+    const currentDate = new Date();
+    const startDate = new Date(currentDate);
+    const endDate = new Date(currentDate);
+    
+    startDate.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+    endDate.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
+    
+    return isWithinInterval(now, { start: startDate, end: endDate });
+  } catch (_error) {
+    console.error('Error checking if routine is active:', _error);
+    return false;
   }
 };
 
