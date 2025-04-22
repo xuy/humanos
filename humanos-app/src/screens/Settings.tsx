@@ -75,6 +75,17 @@ const Settings: React.FC = () => {
       Alert.alert('Error', 'Failed to update JSON URL');
     }
   };
+
+  // Function to re-fetch JSON from URL
+  const refetchJson = async () => {
+    try {
+      await AsyncStorage.removeItem(STORAGE_KEYS.LAST_FETCH_DATE);
+      await refreshRoutines();
+      Alert.alert('Success', 'Routines refreshed from URL');
+    } catch (_err) {
+      Alert.alert('Error', 'Failed to refresh routines');
+    }
+  };
   
   // Function to reset all data
   const resetAllData = async () => {
@@ -89,6 +100,23 @@ const Settings: React.FC = () => {
       await refreshRoutines();
     } catch (_err) {
       Alert.alert('Error', 'Failed to reset data');
+    }
+  };
+
+  // Function to clear today's status
+  const clearTodayStatus = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const statusJson = await AsyncStorage.getItem(STORAGE_KEYS.ROUTINE_STATUS);
+      if (statusJson) {
+        const status = JSON.parse(statusJson);
+        delete status[today];
+        await AsyncStorage.setItem(STORAGE_KEYS.ROUTINE_STATUS, JSON.stringify(status));
+        await updateStatusDisplay();
+        Alert.alert('Success', 'Today\'s status cleared');
+      }
+    } catch (_err) {
+      Alert.alert('Error', 'Failed to clear today\'s status');
     }
   };
 
@@ -156,6 +184,21 @@ const Settings: React.FC = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Status Data</Text>
             <Text style={styles.jsonText}>{statusData}</Text>
+            <TouchableOpacity 
+              style={[styles.button, styles.secondaryButton]}
+              onPress={clearTodayStatus}
+            >
+              <Text style={styles.buttonText}>Clear Today's Status</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.section}>
+            <TouchableOpacity 
+              style={[styles.button, styles.secondaryButton]}
+              onPress={refetchJson}
+            >
+              <Text style={styles.buttonText}>Re-fetch JSON from URL</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.section}>
@@ -209,6 +252,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  secondaryButton: {
+    backgroundColor: '#5856D6',
+  },
+  dangerButton: {
+    backgroundColor: '#FF3B30',
+  },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
@@ -230,28 +279,11 @@ const styles = StyleSheet.create({
   jsonText: {
     fontFamily: 'monospace',
     fontSize: 12,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  refreshButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  refreshButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+    marginBottom: 12,
   },
   jsonInput: {
-    height: 100,
-  },
-  dangerButton: {
-    backgroundColor: '#FF3B30',
+    height: 120,
+    textAlignVertical: 'top',
   },
 });
 
