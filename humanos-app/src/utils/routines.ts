@@ -238,7 +238,6 @@ export const getTodayRoutines = async (): Promise<RoutineWithStatus[]> => {
 // Check if a routine is currently active based on time window
 export const isRoutineActive = (routine: Routine): boolean => {
   const now = new Date();
-  const currentTime = format(now, 'HH:mm');
   
   try {
     const startTime = parse(routine.trigger.start, 'HH:mm', new Date());
@@ -253,8 +252,8 @@ export const isRoutineActive = (routine: Routine): boolean => {
     endDate.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
     
     return isWithinInterval(now, { start: startDate, end: endDate });
-  } catch (error) {
-    console.error('Error checking if routine is active:', error);
+  } catch (_error) {
+    console.error('Error checking if routine is active:', _error);
     return false;
   }
 };

@@ -5,12 +5,11 @@ import {
   TouchableOpacity, 
   View, 
   SafeAreaView,
-  Dimensions,
-  Alert,
   Platform,
-  Modal
+  Modal,
+  Dimensions,
 } from 'react-native';
-import { RoutineWithStatus, Step } from '../types';
+import { RoutineWithStatus } from '../types';
 import useRoutines from '../hooks/useRoutines';
 
 type RoutineRunnerProps = {
@@ -22,7 +21,6 @@ const RoutineRunner: React.FC<RoutineRunnerProps> = ({ route, navigation }) => {
   const { routine } = route.params;
   const { updateRoutineStatus } = useRoutines();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [showIntention, setShowIntention] = useState(false);
   
   const currentStep = routine.steps[currentStepIndex];

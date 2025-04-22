@@ -1,18 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  ActivityIndicator, 
-  FlatList, 
-  RefreshControl, 
-  StyleSheet, 
-  Text, 
-  TouchableOpacity, 
+import React, { useState, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
   View,
-  Animated
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { format } from 'date-fns';
-import RoutineCard from '../components/RoutineCard';
-import useRoutines from '../hooks/useRoutines';
+import { useRoutines } from '../hooks/useRoutines';
 import { RoutineWithStatus } from '../types';
+import RoutineCard from '../components/RoutineCard';
 
 type DailyDashboardProps = {
   navigation: any;

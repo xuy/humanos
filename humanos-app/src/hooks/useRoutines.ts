@@ -3,8 +3,7 @@ import { Routine, RoutineStatus, RoutineWithStatus } from '../types';
 import { 
   fetchRoutines, 
   getTodayRoutines, 
-  updateRoutineStatus, 
-  resetRoutineStatuses
+  updateRoutineStatus,
 } from '../utils/routines';
 
 export const useRoutines = () => {
